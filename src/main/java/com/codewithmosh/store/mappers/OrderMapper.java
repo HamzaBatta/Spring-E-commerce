@@ -1,8 +1,8 @@
 package com.codewithmosh.store.mappers;
 
-import com.codewithmosh.store.dtos.CartProductDto;
-import com.codewithmosh.store.dtos.OrderDto;
-import com.codewithmosh.store.dtos.OrderItemDto;
+import com.codewithmosh.store.dtos.resources.CartProductResource;
+import com.codewithmosh.store.dtos.resources.OrderItemResource;
+import com.codewithmosh.store.dtos.resources.OrderResource;
 import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.entities.OrderItem;
 import com.codewithmosh.store.entities.Product;
@@ -14,11 +14,11 @@ public interface OrderMapper {
     @Mapping(target = "userId", source = "user.id")
     @Mapping(target = "storageId", source = "storage.id")
     @Mapping(target = "totalPrice", expression = "java(order.getTotalPrice())")
-    OrderDto toDto(Order order);
+    OrderResource toResource(Order order);
 
     @Mapping(target = "product", source = "product")
     @Mapping(target = "totalPrice", expression = "java(orderItem.getTotalPrice())")
-    OrderItemDto toDto(OrderItem orderItem);
+    OrderItemResource toResource(OrderItem orderItem);
 
-    CartProductDto toDto(Product product);
+    CartProductResource toResource(Product product);
 }

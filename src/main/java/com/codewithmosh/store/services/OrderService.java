@@ -1,8 +1,8 @@
 package com.codewithmosh.store.services;
 
-import com.codewithmosh.store.dtos.CreateOrderRequest;
-import com.codewithmosh.store.dtos.OrderDto;
-import com.codewithmosh.store.dtos.UpdateOrderStatusRequest;
+import com.codewithmosh.store.dtos.requests.CreateOrderRequest;
+import com.codewithmosh.store.dtos.requests.UpdateOrderStatusRequest;
+import com.codewithmosh.store.dtos.resources.OrderResource;
 import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.entities.OrderStatus;
 import com.codewithmosh.store.entities.StorageItem;
@@ -35,64 +35,51 @@ public class OrderService {
     private final OrderMapper orderMapper;
 
     @Transactional(readOnly = true)
-    public List<OrderDto> getAllOrders() {
+    public List<OrderResource> getAllOrders() {
         return orderRepository.findAllWithItems()
                 .stream()
-                .map(orderMapper::toDto)
+                .map(orderMapper::toResource)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public OrderDto getOrder(Long id) {
+    public OrderResource getOrder(Long id) {
         var order = orderRepository.findWithItemsById(id).orElse(null);
-        if (order == null) {
-            throw new OrderNotFoundException();
-        }
-        return orderMapper.toDto(order);
+        if (order == null) throw new OrderNotFoundException();
+        return orderMapper.toResource(order);
     }
 
     @Transactional
-    public OrderDto createOrder(CreateOrderRequest request) {
+    public OrderResource createOrder(CreateOrderRequest request) {
         var user = userRepository.findById(request.getUserId()).orElse(null);
-        if (user == null) {
-            throw new UserNotFoundException();
-        }
+        if (user == null) throw new UserNotFoundException();
 
         var storage = storageRepository.findById(request.getStorageId()).orElse(null);
-        if (storage == null) {
-            throw new StorageNotFoundException();
-        }
+        if (storage == null) throw new StorageNotFoundException();
 
         var order = new Order();
         order.setUser(user);
         order.setStorage(storage);
-        order.setStatus(OrderStatus.CONFIRMED);
+        order.setStatus(OrderStatus.PENDING);
 
         request.getItems().forEach(itemRequest -> {
             var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
-            if (product == null) {
-                throw new ProductNotFoundException();
-            }
-
+            if (product == null) throw new ProductNotFoundException();
             reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
             order.addItem(product, itemRequest.getQuantity(), product.getPrice());
         });
 
         orderRepository.save(order);
-        return orderMapper.toDto(order);
+        return orderMapper.toResource(order);
     }
 
     @Transactional
-    public OrderDto updateOrderStatus(Long id, UpdateOrderStatusRequest request) {
+    public OrderResource updateOrderStatus(Long id, UpdateOrderStatusRequest request) {
         var order = orderRepository.findWithItemsById(id).orElse(null);
-        if (order == null) {
-            throw new OrderNotFoundException();
-        }
+        if (order == null) throw new OrderNotFoundException();
 
         var nextStatus = request.getStatus();
-        if (!canTransition(order.getStatus(), nextStatus)) {
-            throw new InvalidOrderStatusTransitionException();
-        }
+        if (!canTransition(order.getStatus(), nextStatus)) throw new InvalidOrderStatusTransitionException();
 
         if (nextStatus == OrderStatus.CANCELED && order.getStatus() != OrderStatus.CANCELED) {
             restockInventory(order);
@@ -100,15 +87,13 @@ public class OrderService {
 
         order.setStatus(nextStatus);
         orderRepository.save(order);
-        return orderMapper.toDto(order);
+        return orderMapper.toResource(order);
     }
 
     @Transactional
     public void cancelOrder(Long id) {
         var order = orderRepository.findWithItemsById(id).orElse(null);
-        if (order == null) {
-            throw new OrderNotFoundException();
-        }
+        if (order == null) throw new OrderNotFoundException();
 
         if (order.getStatus() != OrderStatus.CANCELED) {
             restockInventory(order);
@@ -119,14 +104,10 @@ public class OrderService {
 
     private void reserveInventory(Long storageId, Long productId, Integer quantity) {
         var item = storageItemRepository.findByStorageIdAndProductId(storageId, productId).orElse(null);
-        if (item == null) {
-            throw new InsufficientInventoryException();
-        }
+        if (item == null) throw new InsufficientInventoryException();
 
         var current = item.getQuantity() == null ? 0 : item.getQuantity();
-        if (current < quantity) {
-            throw new InsufficientInventoryException();
-        }
+        if (current < quantity) throw new InsufficientInventoryException();
 
         item.setQuantity(current - quantity);
         storageItemRepository.save(item);
@@ -134,9 +115,7 @@ public class OrderService {
 
     private void restockInventory(Order order) {
         var storage = order.getStorage();
-        if (storage == null) {
-            return;
-        }
+        if (storage == null) return;
 
         order.getItems().forEach(item -> {
             var storageItem = storageItemRepository
@@ -156,10 +135,7 @@ public class OrderService {
     }
 
     private boolean canTransition(OrderStatus current, OrderStatus next) {
-        if (current == next) {
-            return true;
-        }
-
+        if (current == next) return true;
         return switch (current) {
             case PENDING -> next == OrderStatus.CONFIRMED || next == OrderStatus.CANCELED;
             case CONFIRMED -> next == OrderStatus.SHIPPED || next == OrderStatus.CANCELED;
@@ -168,4 +144,3 @@ public class OrderService {
         };
     }
 }
-

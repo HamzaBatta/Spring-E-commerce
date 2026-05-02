@@ -1,6 +1,11 @@
 package com.codewithmosh.store.services;
 
-import com.codewithmosh.store.dtos.*;
+import com.codewithmosh.store.dtos.requests.AddStorageItemRequest;
+import com.codewithmosh.store.dtos.requests.CreateStorageRequest;
+import com.codewithmosh.store.dtos.requests.UpdateStorageItemRequest;
+import com.codewithmosh.store.dtos.requests.UpdateStorageRequest;
+import com.codewithmosh.store.dtos.resources.StorageItemResource;
+import com.codewithmosh.store.dtos.resources.StorageResource;
 import com.codewithmosh.store.entities.Storage;
 import com.codewithmosh.store.entities.StorageItem;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
@@ -25,67 +30,56 @@ public class StorageService {
     private StorageItemMapper storageItemMapper;
     private ProductRepository productRepository;
 
-    public List<StorageDto> getAllStorages(Long productId) {
+    public List<StorageResource> getAllStorages(Long productId) {
         var storages = (productId != null)
                 ? storageRepository.findByProductId(productId)
                 : storageRepository.findAllWithItems();
-        return storages.stream()
-                .map(storageMapper::toDto)
-                .toList();
+        return storages.stream().map(storageMapper::toResource).toList();
     }
 
-    public StorageDto getStorage(Long id) {
+    public StorageResource getStorage(Long id) {
         var storage = storageRepository.findWithItemsById(id).orElse(null);
-        if (storage == null) {
-            throw new StorageNotFoundException();
-        }
-        return storageMapper.toDto(storage);
+        if (storage == null) throw new StorageNotFoundException();
+        return storageMapper.toResource(storage);
     }
 
-    public StorageDto createStorage(CreateStorageRequest request) {
+    public StorageResource createStorage(CreateStorageRequest request) {
         var storage = new Storage();
         storage.setName(request.getName());
         storage.setLocation(request.getLocation());
         storageRepository.save(storage);
-        return storageMapper.toDto(storage);
+        return storageMapper.toResource(storage);
     }
 
-    public StorageDto updateStorage(Long id, UpdateStorageRequest request) {
+    public StorageResource updateStorage(Long id, UpdateStorageRequest request) {
         var storage = storageRepository.findWithItemsById(id).orElse(null);
-        if (storage == null) {
-            throw new StorageNotFoundException();
-        }
+        if (storage == null) throw new StorageNotFoundException();
         storage.setName(request.getName());
         storage.setLocation(request.getLocation());
         storageRepository.save(storage);
-        return storageMapper.toDto(storage);
+        return storageMapper.toResource(storage);
     }
 
     public void deleteStorage(Long id) {
         var storage = storageRepository.findById(id).orElse(null);
-        if (storage == null) {
-            throw new StorageNotFoundException();
-        }
+        if (storage == null) throw new StorageNotFoundException();
         storageRepository.delete(storage);
     }
 
-    public List<StorageItemDto> getStorageItems(Long storageId) {
+    public List<StorageItemResource> getStorageItems(Long storageId) {
         ensureStorageExists(storageId);
         return storageItemRepository.findByStorageId(storageId)
                 .stream()
-                .map(storageItemMapper::toDto)
+                .map(storageItemMapper::toResource)
                 .toList();
     }
 
-    public StorageItemDto addStorageItem(Long storageId, AddStorageItemRequest request) {
+    public StorageItemResource addStorageItem(Long storageId, AddStorageItemRequest request) {
         var storage = storageRepository.findById(storageId).orElse(null);
-        if (storage == null) {
-            throw new StorageNotFoundException();
-        }
+        if (storage == null) throw new StorageNotFoundException();
+
         var product = productRepository.findById(request.getProductId()).orElse(null);
-        if (product == null) {
-            throw new ProductNotFoundException();
-        }
+        if (product == null) throw new ProductNotFoundException();
 
         var item = storageItemRepository.findByStorageIdAndProductId(storageId, product.getId())
                 .orElseGet(() -> {
@@ -99,31 +93,24 @@ public class StorageService {
         var current = item.getQuantity() == null ? 0 : item.getQuantity();
         item.setQuantity(current + request.getQuantity());
         storageItemRepository.save(item);
-        return storageItemMapper.toDto(item);
+        return storageItemMapper.toResource(item);
     }
 
-    public StorageItemDto updateStorageItem(Long storageId, Long itemId, UpdateStorageItemRequest request) {
+    public StorageItemResource updateStorageItem(Long storageId, Long itemId, UpdateStorageItemRequest request) {
         var item = storageItemRepository.findByIdAndStorageId(itemId, storageId).orElse(null);
-        if (item == null) {
-            throw new StorageItemNotFoundException();
-        }
+        if (item == null) throw new StorageItemNotFoundException();
         item.setQuantity(request.getQuantity());
         storageItemRepository.save(item);
-        return storageItemMapper.toDto(item);
+        return storageItemMapper.toResource(item);
     }
 
     public void deleteStorageItem(Long storageId, Long itemId) {
         var item = storageItemRepository.findByIdAndStorageId(itemId, storageId).orElse(null);
-        if (item == null) {
-            throw new StorageItemNotFoundException();
-        }
+        if (item == null) throw new StorageItemNotFoundException();
         storageItemRepository.delete(item);
     }
 
     private void ensureStorageExists(Long storageId) {
-        if (storageRepository.existsById(storageId)) {
-            return;
-        }
-        throw new StorageNotFoundException();
+        if (!storageRepository.existsById(storageId)) throw new StorageNotFoundException();
     }
 }

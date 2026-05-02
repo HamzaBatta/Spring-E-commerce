@@ -1,8 +1,8 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dtos.CreateOrderRequest;
-import com.codewithmosh.store.dtos.OrderDto;
-import com.codewithmosh.store.dtos.UpdateOrderStatusRequest;
+import com.codewithmosh.store.dtos.requests.CreateOrderRequest;
+import com.codewithmosh.store.dtos.requests.UpdateOrderStatusRequest;
+import com.codewithmosh.store.dtos.resources.OrderResource;
 import com.codewithmosh.store.exceptions.InsufficientInventoryException;
 import com.codewithmosh.store.exceptions.InvalidOrderStatusTransitionException;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
@@ -27,30 +27,28 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping
-    public List<OrderDto> getAllOrders() {
+    public List<OrderResource> getAllOrders() {
         return orderService.getAllOrders();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<OrderDto> getOrder(@PathVariable Long id) {
+    public ResponseEntity<OrderResource> getOrder(@PathVariable Long id) {
         return ResponseEntity.ok(orderService.getOrder(id));
     }
 
     @PostMapping
-    public ResponseEntity<OrderDto> createOrder(
+    public ResponseEntity<OrderResource> createOrder(
             UriComponentsBuilder uriBuilder,
-            @Valid @RequestBody CreateOrderRequest request
-    ) {
+            @Valid @RequestBody CreateOrderRequest request) {
         var created = orderService.createOrder(request);
         var uri = uriBuilder.path("/orders/{id}").buildAndExpand(created.getId()).toUri();
         return ResponseEntity.created(uri).body(created);
     }
 
     @PutMapping("/{id}/status")
-    public ResponseEntity<OrderDto> updateOrderStatus(
+    public ResponseEntity<OrderResource> updateOrderStatus(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateOrderStatusRequest request
-    ) {
+            @Valid @RequestBody UpdateOrderStatusRequest request) {
         return ResponseEntity.ok(orderService.updateOrderStatus(id, request));
     }
 
@@ -65,8 +63,9 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
     }
 
-    @ExceptionHandler({UserNotFoundException.class, ProductNotFoundException.class, StorageNotFoundException.class, InsufficientInventoryException.class, InvalidOrderStatusTransitionException.class})
-    public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", exception.getMessage()));
+    @ExceptionHandler({UserNotFoundException.class, ProductNotFoundException.class, StorageNotFoundException.class,
+            InsufficientInventoryException.class, InvalidOrderStatusTransitionException.class})
+    public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
     }
 }

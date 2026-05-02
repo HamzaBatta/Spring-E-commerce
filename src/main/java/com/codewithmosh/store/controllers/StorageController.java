@@ -1,6 +1,11 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dtos.*;
+import com.codewithmosh.store.dtos.requests.AddStorageItemRequest;
+import com.codewithmosh.store.dtos.requests.CreateStorageRequest;
+import com.codewithmosh.store.dtos.requests.UpdateStorageItemRequest;
+import com.codewithmosh.store.dtos.requests.UpdateStorageRequest;
+import com.codewithmosh.store.dtos.resources.StorageItemResource;
+import com.codewithmosh.store.dtos.resources.StorageResource;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
 import com.codewithmosh.store.exceptions.StorageItemNotFoundException;
 import com.codewithmosh.store.exceptions.StorageNotFoundException;
@@ -20,14 +25,12 @@ public class StorageController {
     private final StorageService storageService;
 
     @GetMapping
-    public List<StorageDto> getAllStorages(
-            @RequestParam(required = false, name = "productId") Long productId
-    ) {
+    public List<StorageResource> getAllStorages(@RequestParam(required = false) Long productId) {
         return storageService.getAllStorages(productId);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<StorageDto> getStorage(@PathVariable Long id) {
+    public ResponseEntity<StorageResource> getStorage(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(storageService.getStorage(id));
         } catch (StorageNotFoundException e) {
@@ -36,20 +39,18 @@ public class StorageController {
     }
 
     @PostMapping
-    public ResponseEntity<StorageDto> createStorage(
+    public ResponseEntity<StorageResource> createStorage(
             UriComponentsBuilder uriBuilder,
-            @Valid @RequestBody CreateStorageRequest request
-    ) {
+            @Valid @RequestBody CreateStorageRequest request) {
         var created = storageService.createStorage(request);
         var uri = uriBuilder.path("/storages/{id}").buildAndExpand(created.getId()).toUri();
         return ResponseEntity.created(uri).body(created);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<StorageDto> updateStorage(
+    public ResponseEntity<StorageResource> updateStorage(
             @PathVariable Long id,
-            @Valid @RequestBody UpdateStorageRequest request
-    ) {
+            @Valid @RequestBody UpdateStorageRequest request) {
         try {
             return ResponseEntity.ok(storageService.updateStorage(id, request));
         } catch (StorageNotFoundException e) {
@@ -68,7 +69,7 @@ public class StorageController {
     }
 
     @GetMapping("/{id}/items")
-    public ResponseEntity<List<StorageItemDto>> getStorageItems(@PathVariable Long id) {
+    public ResponseEntity<List<StorageItemResource>> getStorageItems(@PathVariable Long id) {
         try {
             return ResponseEntity.ok(storageService.getStorageItems(id));
         } catch (StorageNotFoundException e) {
@@ -77,10 +78,9 @@ public class StorageController {
     }
 
     @PostMapping("/{id}/items")
-    public ResponseEntity<StorageItemDto> addStorageItem(
+    public ResponseEntity<StorageItemResource> addStorageItem(
             @PathVariable Long id,
-            @Valid @RequestBody AddStorageItemRequest request
-    ) {
+            @Valid @RequestBody AddStorageItemRequest request) {
         try {
             return ResponseEntity.ok(storageService.addStorageItem(id, request));
         } catch (StorageNotFoundException e) {
@@ -91,11 +91,10 @@ public class StorageController {
     }
 
     @PutMapping("/{id}/items/{itemId}")
-    public ResponseEntity<StorageItemDto> updateStorageItem(
+    public ResponseEntity<StorageItemResource> updateStorageItem(
             @PathVariable Long id,
             @PathVariable Long itemId,
-            @Valid @RequestBody UpdateStorageItemRequest request
-    ) {
+            @Valid @RequestBody UpdateStorageItemRequest request) {
         try {
             return ResponseEntity.ok(storageService.updateStorageItem(id, itemId, request));
         } catch (StorageItemNotFoundException e) {
@@ -104,10 +103,7 @@ public class StorageController {
     }
 
     @DeleteMapping("/{id}/items/{itemId}")
-    public ResponseEntity<Void> deleteStorageItem(
-            @PathVariable Long id,
-            @PathVariable Long itemId
-    ) {
+    public ResponseEntity<Void> deleteStorageItem(@PathVariable Long id, @PathVariable Long itemId) {
         try {
             storageService.deleteStorageItem(id, itemId);
             return ResponseEntity.noContent().build();

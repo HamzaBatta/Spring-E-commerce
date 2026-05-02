@@ -1,19 +1,19 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dtos.ProductDto;
+import com.codewithmosh.store.dtos.requests.CreateProductRequest;
+import com.codewithmosh.store.dtos.requests.UpdateProductRequest;
+import com.codewithmosh.store.dtos.resources.ProductResource;
 import com.codewithmosh.store.entities.Product;
 import com.codewithmosh.store.mappers.ProductMapper;
 import com.codewithmosh.store.repositories.CategoryRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import javax.swing.text.html.parser.Entity;
 import java.util.List;
-import java.util.Set;
 
 @AllArgsConstructor
 @RequestMapping("/products")
@@ -24,77 +24,57 @@ public class ProductController {
     private final CategoryRepository categoryRepository;
 
     @GetMapping
-    public List<ProductDto> getAllProducts(@RequestParam(required=false,defaultValue="",name="categoryId") Byte categoryId){
-
-        List<Product> products;
-        if(categoryId != null){
-            products = productRepository.findByCategoryId(categoryId);
-        }else{
-            products = productRepository.findAllWithCategory();
-        }
-        return products
-                .stream()
-                .map(productMapper::toDto)
-                .toList();
+    public List<ProductResource> getAllProducts(
+            @RequestParam(required = false, defaultValue = "", name = "categoryId") Byte categoryId) {
+        List<Product> products = (categoryId != null)
+                ? productRepository.findByCategoryId(categoryId)
+                : productRepository.findAllWithCategory();
+        return products.stream().map(productMapper::toResource).toList();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ProductDto> getProduct(@PathVariable Long id) {
+    public ResponseEntity<ProductResource> getProduct(@PathVariable Long id) {
         var product = productRepository.findById(id).orElse(null);
-        if (product == null) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(productMapper.toDto(product));
+        if (product == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(productMapper.toResource(product));
     }
 
     @PostMapping
-    public ResponseEntity<ProductDto> createProduct (
+    public ResponseEntity<ProductResource> createProduct(
             UriComponentsBuilder uriBuilder,
-            @RequestBody ProductDto productDto
-    ){
-        var category = categoryRepository.findById(productDto.getCategoryId()).orElse(null);
-        if(category==null){
-            return ResponseEntity.badRequest().build();
-        }
-        var product = productMapper.toEntity(productDto);
+            @Valid @RequestBody CreateProductRequest request) {
+        var category = categoryRepository.findById(request.getCategoryId()).orElse(null);
+        if (category == null) return ResponseEntity.badRequest().build();
+
+        var product = productMapper.toEntity(request);
         product.setCategory(category);
         productRepository.save(product);
-        productDto.setId(product.getId());
 
-        var uri = uriBuilder.path("/products/{id}").buildAndExpand(productDto.getId()).toUri();
-        return ResponseEntity.created(uri).body(productDto);
+        var resource = productMapper.toResource(product);
+        var uri = uriBuilder.path("/products/{id}").buildAndExpand(resource.getId()).toUri();
+        return ResponseEntity.created(uri).body(resource);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ProductDto> updateProduct(
+    public ResponseEntity<ProductResource> updateProduct(
             @PathVariable Long id,
-            @RequestBody ProductDto productDto
-    ){
-
-        var category = categoryRepository.findById(productDto.getCategoryId()).orElse(null);
-        if(category==null){
-            return ResponseEntity.badRequest().build();
-        }
+            @Valid @RequestBody UpdateProductRequest request) {
+        var category = categoryRepository.findById(request.getCategoryId()).orElse(null);
+        if (category == null) return ResponseEntity.badRequest().build();
 
         var product = productRepository.findById(id).orElse(null);
-        if(product ==null){
-            return ResponseEntity.notFound().build();
-        }
+        if (product == null) return ResponseEntity.notFound().build();
 
-
-        productMapper.update(productDto,product);
+        productMapper.update(request, product);
         product.setCategory(category);
         productRepository.save(product);
-        productDto.setId(product.getId());
-        return ResponseEntity.ok(productDto);
+        return ResponseEntity.ok(productMapper.toResource(product));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id){
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         var product = productRepository.findById(id).orElse(null);
-        if(product==null){
-            return ResponseEntity.notFound().build();
-        }
+        if (product == null) return ResponseEntity.notFound().build();
         productRepository.delete(product);
         return ResponseEntity.noContent().build();
     }
