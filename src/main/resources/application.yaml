@@ -16,5 +16,11 @@ jwt:
   expiration: 86400000
 
 stripe:
-  secret-key: pk_test_51NjqKaD9B53vbPRuLJC5jgngD3HeNJSR6fSsUV4UiWk5WN98iqNw8pyc8Md4z82jlZndKt28eOnuSWHRJsp609KK00WSf24PRo
-  webhook-secret:  sk_test_51NjqKaD9B53vbPRuj0GEECHtDEOazZ7CqOuwVDW0tIoWq1yaH9HPnmcXmTCrhsPXovIntOFaA0DAKam8YqVidHqG00XsIeH4HI
+  secret-key:
+  webhook-secret:
+
+app:
+  capacity:
+    orders:
+      maxConcurrent: 4
+      timeoutMs: 150

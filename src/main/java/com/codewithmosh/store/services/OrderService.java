@@ -12,6 +12,7 @@ import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
 import com.codewithmosh.store.exceptions.StorageNotFoundException;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
+import com.codewithmosh.store.exceptions.SystemBusyException;
 import com.codewithmosh.store.mappers.OrderMapper;
 import com.codewithmosh.store.repositories.OrderRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
@@ -19,7 +20,6 @@ import com.codewithmosh.store.repositories.StorageItemRepository;
 import com.codewithmosh.store.repositories.StorageRepository;
 import com.codewithmosh.store.repositories.UserRepository;
 import lombok.AllArgsConstructor;
-import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +35,7 @@ public class OrderService {
     private final StorageRepository storageRepository;
     private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
+    private final OrderCapacityLimiter orderCapacityLimiter;
 
     private static final int MAX_LOCK_RETRIES = 3;
     private static final long RETRY_BACKOFF_MS = 60L;
@@ -56,26 +57,34 @@ public class OrderService {
 
     @Transactional
     public OrderResource createOrder(CreateOrderRequest request) {
-        var user = userRepository.findById(request.getUserId()).orElse(null);
-        if (user == null) throw new UserNotFoundException();
+        var acquired = orderCapacityLimiter.tryAcquire();
+        if (!acquired) {
+            throw new SystemBusyException();
+        }
+        try {
+            var user = userRepository.findById(request.getUserId()).orElse(null);
+            if (user == null) throw new UserNotFoundException();
 
-        var storage = storageRepository.findById(request.getStorageId()).orElse(null);
-        if (storage == null) throw new StorageNotFoundException();
+            var storage = storageRepository.findById(request.getStorageId()).orElse(null);
+            if (storage == null) throw new StorageNotFoundException();
 
-        var order = new Order();
-        order.setUser(user);
-        order.setStorage(storage);
-        order.setStatus(OrderStatus.PENDING);
+            var order = new Order();
+            order.setUser(user);
+            order.setStorage(storage);
+            order.setStatus(OrderStatus.PENDING);
 
-        request.getItems().forEach(itemRequest -> {
-            var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
-            if (product == null) throw new ProductNotFoundException();
-            reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
-            order.addItem(product, itemRequest.getQuantity(), product.getPrice());
-        });
+            request.getItems().forEach(itemRequest -> {
+                var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
+                if (product == null) throw new ProductNotFoundException();
+                reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
+                order.addItem(product, itemRequest.getQuantity(), product.getPrice());
+            });
 
-        orderRepository.save(order);
-        return orderMapper.toResource(order);
+            orderRepository.save(order);
+            return orderMapper.toResource(order);
+        } finally {
+            orderCapacityLimiter.release();
+        }
     }
 
     @Transactional
