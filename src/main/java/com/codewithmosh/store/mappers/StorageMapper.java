@@ -6,13 +6,13 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = StorageItemMapper.class)
 public interface StorageMapper {
-    @Mapping(target = "productId", source = "product.id")
     StorageDto toDto(Storage storage);
 
     Storage toEntity(StorageDto storageDto);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "items", ignore = true)
     void update(StorageDto storageDto, @MappingTarget Storage storage);
 }

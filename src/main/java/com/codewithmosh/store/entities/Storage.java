@@ -3,6 +3,9 @@ package com.codewithmosh.store.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Getter
 @Setter
 @Builder
@@ -22,10 +25,6 @@ public class Storage {
     @Column(name = "location")
     private String location;
 
-    @ManyToOne
-    @JoinColumn(name = "product_id")
-    private Product product;
-
-    @Column(name = "quantity")
-    private Integer quantity;
+    @OneToMany(mappedBy = "storage", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StorageItem> items = new ArrayList<>();
 }

@@ -5,14 +5,17 @@ import com.codewithmosh.store.dtos.OrderDto;
 import com.codewithmosh.store.dtos.UpdateOrderStatusRequest;
 import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.entities.OrderStatus;
+import com.codewithmosh.store.entities.StorageItem;
 import com.codewithmosh.store.exceptions.InsufficientInventoryException;
 import com.codewithmosh.store.exceptions.InvalidOrderStatusTransitionException;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
+import com.codewithmosh.store.exceptions.StorageNotFoundException;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.mappers.OrderMapper;
 import com.codewithmosh.store.repositories.OrderRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
+import com.codewithmosh.store.repositories.StorageItemRepository;
 import com.codewithmosh.store.repositories.StorageRepository;
 import com.codewithmosh.store.repositories.UserRepository;
 import lombok.AllArgsConstructor;
@@ -28,6 +31,7 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final StorageRepository storageRepository;
+    private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
 
     @Transactional(readOnly = true)
@@ -54,8 +58,14 @@ public class OrderService {
             throw new UserNotFoundException();
         }
 
+        var storage = storageRepository.findById(request.getStorageId()).orElse(null);
+        if (storage == null) {
+            throw new StorageNotFoundException();
+        }
+
         var order = new Order();
         order.setUser(user);
+        order.setStorage(storage);
         order.setStatus(OrderStatus.CONFIRMED);
 
         request.getItems().forEach(itemRequest -> {
@@ -64,7 +74,7 @@ public class OrderService {
                 throw new ProductNotFoundException();
             }
 
-            reserveInventory(product.getId(), itemRequest.getQuantity());
+            reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
             order.addItem(product, itemRequest.getQuantity(), product.getPrice());
         });
 
@@ -107,38 +117,41 @@ public class OrderService {
         }
     }
 
-    private void reserveInventory(Long productId, Integer quantity) {
-        var storages = storageRepository.findByProductId(productId);
-        var available = storages.stream().mapToInt(storage -> storage.getQuantity() == null ? 0 : storage.getQuantity()).sum();
-        if (available < quantity) {
+    private void reserveInventory(Long storageId, Long productId, Integer quantity) {
+        var item = storageItemRepository.findByStorageIdAndProductId(storageId, productId).orElse(null);
+        if (item == null) {
             throw new InsufficientInventoryException();
         }
 
-        var remaining = quantity;
-        for (var storage : storages) {
-            if (remaining <= 0) {
-                break;
-            }
-            var current = storage.getQuantity() == null ? 0 : storage.getQuantity();
-            var deducted = Math.min(current, remaining);
-            storage.setQuantity(current - deducted);
-            remaining -= deducted;
+        var current = item.getQuantity() == null ? 0 : item.getQuantity();
+        if (current < quantity) {
+            throw new InsufficientInventoryException();
         }
 
-        storageRepository.saveAll(storages);
+        item.setQuantity(current - quantity);
+        storageItemRepository.save(item);
     }
 
     private void restockInventory(Order order) {
-        order.getItems().forEach(item -> {
-            var storages = storageRepository.findByProductId(item.getProduct().getId());
-            if (storages.isEmpty()) {
-                return;
-            }
+        var storage = order.getStorage();
+        if (storage == null) {
+            return;
+        }
 
-            var storage = storages.get(0);
-            var current = storage.getQuantity() == null ? 0 : storage.getQuantity();
-            storage.setQuantity(current + item.getQuantity());
-            storageRepository.save(storage);
+        order.getItems().forEach(item -> {
+            var storageItem = storageItemRepository
+                    .findByStorageIdAndProductId(storage.getId(), item.getProduct().getId())
+                    .orElseGet(() -> {
+                        var newItem = new StorageItem();
+                        newItem.setStorage(storage);
+                        newItem.setProduct(item.getProduct());
+                        newItem.setQuantity(0);
+                        return newItem;
+                    });
+
+            var current = storageItem.getQuantity() == null ? 0 : storageItem.getQuantity();
+            storageItem.setQuantity(current + item.getQuantity());
+            storageItemRepository.save(storageItem);
         });
     }
 

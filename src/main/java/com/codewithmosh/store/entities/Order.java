@@ -26,6 +26,10 @@ public class Order {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @ManyToOne
+    @JoinColumn(name = "storage_id")
+    private Storage storage;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private OrderStatus status;
@@ -67,4 +71,3 @@ public class Order {
         items.clear();
     }
 }
-

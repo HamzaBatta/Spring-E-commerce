@@ -11,8 +11,8 @@ import java.util.List;
 public class OrderDto {
     private Long id;
     private Long userId;
+    private Long storageId;
     private OrderStatus status;
     private List<com.codewithmosh.store.dtos.OrderItemDto> items = new ArrayList<>();
     private BigDecimal totalPrice = BigDecimal.ZERO;
 }
-

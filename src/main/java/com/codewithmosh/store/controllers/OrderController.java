@@ -7,6 +7,7 @@ import com.codewithmosh.store.exceptions.InsufficientInventoryException;
 import com.codewithmosh.store.exceptions.InvalidOrderStatusTransitionException;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
+import com.codewithmosh.store.exceptions.StorageNotFoundException;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.services.OrderService;
 import jakarta.validation.Valid;
@@ -64,9 +65,8 @@ public class OrderController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Order not found"));
     }
 
-    @ExceptionHandler({UserNotFoundException.class, ProductNotFoundException.class, InsufficientInventoryException.class, InvalidOrderStatusTransitionException.class})
+    @ExceptionHandler({UserNotFoundException.class, ProductNotFoundException.class, StorageNotFoundException.class, InsufficientInventoryException.class, InvalidOrderStatusTransitionException.class})
     public ResponseEntity<Map<String, String>> handleBadRequest(RuntimeException exception) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", exception.getMessage()));
     }
 }
-

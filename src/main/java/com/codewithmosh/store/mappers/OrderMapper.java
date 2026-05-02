@@ -12,6 +12,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
     @Mapping(target = "userId", source = "user.id")
+    @Mapping(target = "storageId", source = "storage.id")
     @Mapping(target = "totalPrice", expression = "java(order.getTotalPrice())")
     OrderDto toDto(Order order);
 
@@ -21,4 +22,3 @@ public interface OrderMapper {
 
     CartProductDto toDto(Product product);
 }
-

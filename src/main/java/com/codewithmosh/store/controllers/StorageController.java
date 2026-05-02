@@ -1,9 +1,11 @@
 package com.codewithmosh.store.controllers;
 
-import com.codewithmosh.store.dtos.StorageDto;
+import com.codewithmosh.store.dtos.*;
 import com.codewithmosh.store.exceptions.ProductNotFoundException;
+import com.codewithmosh.store.exceptions.StorageItemNotFoundException;
 import com.codewithmosh.store.exceptions.StorageNotFoundException;
 import com.codewithmosh.store.services.StorageService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,28 +38,22 @@ public class StorageController {
     @PostMapping
     public ResponseEntity<StorageDto> createStorage(
             UriComponentsBuilder uriBuilder,
-            @RequestBody StorageDto storageDto
+            @Valid @RequestBody CreateStorageRequest request
     ) {
-        try {
-            var created = storageService.createStorage(storageDto);
-            var uri = uriBuilder.path("/storages/{id}").buildAndExpand(created.getId()).toUri();
-            return ResponseEntity.created(uri).body(created);
-        } catch (ProductNotFoundException e) {
-            return ResponseEntity.badRequest().build();
-        }
+        var created = storageService.createStorage(request);
+        var uri = uriBuilder.path("/storages/{id}").buildAndExpand(created.getId()).toUri();
+        return ResponseEntity.created(uri).body(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<StorageDto> updateStorage(
             @PathVariable Long id,
-            @RequestBody StorageDto storageDto
+            @Valid @RequestBody UpdateStorageRequest request
     ) {
         try {
-            return ResponseEntity.ok(storageService.updateStorage(id, storageDto));
+            return ResponseEntity.ok(storageService.updateStorage(id, request));
         } catch (StorageNotFoundException e) {
             return ResponseEntity.notFound().build();
-        } catch (ProductNotFoundException e) {
-            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -67,6 +63,55 @@ public class StorageController {
             storageService.deleteStorage(id);
             return ResponseEntity.noContent().build();
         } catch (StorageNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/{id}/items")
+    public ResponseEntity<List<StorageItemDto>> getStorageItems(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(storageService.getStorageItems(id));
+        } catch (StorageNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PostMapping("/{id}/items")
+    public ResponseEntity<StorageItemDto> addStorageItem(
+            @PathVariable Long id,
+            @Valid @RequestBody AddStorageItemRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(storageService.addStorageItem(id, request));
+        } catch (StorageNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (ProductNotFoundException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PutMapping("/{id}/items/{itemId}")
+    public ResponseEntity<StorageItemDto> updateStorageItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId,
+            @Valid @RequestBody UpdateStorageItemRequest request
+    ) {
+        try {
+            return ResponseEntity.ok(storageService.updateStorageItem(id, itemId, request));
+        } catch (StorageItemNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{id}/items/{itemId}")
+    public ResponseEntity<Void> deleteStorageItem(
+            @PathVariable Long id,
+            @PathVariable Long itemId
+    ) {
+        try {
+            storageService.deleteStorageItem(id, itemId);
+            return ResponseEntity.noContent().build();
+        } catch (StorageItemNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
     }

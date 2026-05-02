@@ -12,8 +12,10 @@ public class CreateOrderRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
 
+    @NotNull(message = "Storage ID is required")
+    private Long storageId;
+
     @NotEmpty(message = "Order items are required")
     @Valid
     private List<CreateOrderItemRequest> items;
 }
-
