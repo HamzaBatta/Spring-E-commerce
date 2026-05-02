@@ -4,7 +4,7 @@ import com.codewithmosh.store.annotations.Monitored;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
 
-@Component("default")
+@Component("invoice-default")
 @AllArgsConstructor
 public class DefaultInvoiceStrategy implements InvoiceProcessingStrategy {
     private final InvoiceService invoiceService;

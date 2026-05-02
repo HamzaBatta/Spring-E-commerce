@@ -7,6 +7,7 @@ import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.repositories.InvoiceRepository;
 import com.codewithmosh.store.repositories.OrderRepository;
 import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -20,12 +21,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class InvoiceService {
     private static final Logger log = LoggerFactory.getLogger(InvoiceService.class);
 
@@ -90,13 +92,17 @@ public class InvoiceService {
                 cs.newLineAtOffset(0, -30);
                 cs.showText("--- Items ---");
 
-                double total = 0.0;
+                BigDecimal total = BigDecimal.ZERO;
                 for (var item : order.getItems()) {
                     cs.newLineAtOffset(0, -20);
+                    BigDecimal lineTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
                     String line = String.format("%s x%d  @ %.2f  => %.2f",
-                            item.getProduct().getName(), item.getQuantity(), item.getUnitPrice(), item.getQuantity() * item.getUnitPrice());
+                            item.getProduct().getName(),
+                            item.getQuantity(),
+                            item.getUnitPrice(),
+                            lineTotal);
                     cs.showText(line);
-                    total += item.getQuantity() * item.getUnitPrice();
+                    total = total.add(lineTotal);
                 }
 
                 cs.newLineAtOffset(0, -30);

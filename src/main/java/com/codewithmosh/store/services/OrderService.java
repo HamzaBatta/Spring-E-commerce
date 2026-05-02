@@ -6,10 +6,8 @@ import com.codewithmosh.store.dtos.resources.OrderResource;
 import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.entities.OrderStatus;
 import com.codewithmosh.store.entities.StorageItem;
-import com.codewithmosh.store.exceptions.InsufficientInventoryException;
 import com.codewithmosh.store.exceptions.InvalidOrderStatusTransitionException;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
-import com.codewithmosh.store.exceptions.SystemBusyException;
 import com.codewithmosh.store.mappers.OrderMapper;
 import com.codewithmosh.store.repositories.OrderRepository;
 import com.codewithmosh.store.repositories.StorageItemRepository;
@@ -24,7 +22,6 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
-    private final OrderCapacityLimiter orderCapacityLimiter;
     private final StrategySelector strategySelector;
 
     @Transactional(readOnly = true)
@@ -41,12 +38,7 @@ public class OrderService {
     }
 
     public OrderResource createOrder(CreateOrderRequest request) {
-        if (!orderCapacityLimiter.tryAcquire()) throw new SystemBusyException();
-        try {
-            return strategySelector.resolve(OrderCreationStrategy.class).create(request);
-        } finally {
-            orderCapacityLimiter.release();
-        }
+        return strategySelector.resolve(OrderCreationStrategy.class).create(request);
     }
 
     @Transactional

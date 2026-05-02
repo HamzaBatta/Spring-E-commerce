@@ -38,9 +38,18 @@ public class StrategySelector {
 
         String typeKey = resolveTypeKey(strategyType);
         String requestedName = strategyContext.get(typeKey);
+        String scopedDefault = typeKey + "-default";
 
-        if (beans.containsKey(requestedName)) {
+        if (requestedName != null && beans.containsKey(requestedName)) {
             return beans.get(requestedName);
+        }
+
+        if ("default".equals(requestedName) && beans.containsKey(scopedDefault)) {
+            return beans.get(scopedDefault);
+        }
+
+        if (beans.containsKey(scopedDefault)) {
+            return beans.get(scopedDefault);
         }
 
         if (beans.containsKey("default")) {
