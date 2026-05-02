@@ -25,8 +25,11 @@ public class StorageController {
     private final StorageService storageService;
 
     @GetMapping
-    public List<StorageResource> getAllStorages(@RequestParam(required = false) Long productId) {
-        return storageService.getAllStorages(productId);
+    public org.springframework.data.domain.Page<StorageResource> getAllStorages(@RequestParam(required = false) Long productId,
+                                                                                 @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+                                                                                 @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return storageService.getAllStorages(productId, pageable);
     }
 
     @GetMapping("/{id}")
@@ -69,9 +72,12 @@ public class StorageController {
     }
 
     @GetMapping("/{id}/items")
-    public ResponseEntity<List<StorageItemResource>> getStorageItems(@PathVariable Long id) {
+    public ResponseEntity<org.springframework.data.domain.Page<StorageItemResource>> getStorageItems(@PathVariable Long id,
+                                                                                                         @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+                                                                                                         @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
         try {
-            return ResponseEntity.ok(storageService.getStorageItems(id));
+            var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+            return ResponseEntity.ok(storageService.getStorageItems(id, pageable));
         } catch (StorageNotFoundException e) {
             return ResponseEntity.notFound().build();
         }

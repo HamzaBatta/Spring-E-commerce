@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import com.codewithmosh.store.dtos.resources.ApiResponse;
 
 @AllArgsConstructor
 @RestController
@@ -20,22 +21,25 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/user/register")
-    public ResponseEntity<AuthResource> registerUser(@Valid @RequestBody RegisterUserRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.registerUser(request));
+    public ResponseEntity<ApiResponse<AuthResource>> registerUser(@Valid @RequestBody RegisterUserRequest request) {
+        var auth = authService.registerUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(auth, "User registered successfully"));
     }
 
     @PostMapping("/user/login")
-    public ResponseEntity<AuthResource> loginUser(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.loginUser(request));
+    public ResponseEntity<ApiResponse<AuthResource>> loginUser(@Valid @RequestBody LoginRequest request) {
+        var auth = authService.loginUser(request);
+        return ResponseEntity.ok(ApiResponse.success(auth, "Login successful"));
     }
 
     @PostMapping("/admin/login")
-    public ResponseEntity<AuthResource> loginAdmin(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.loginAdmin(request));
+    public ResponseEntity<ApiResponse<AuthResource>> loginAdmin(@Valid @RequestBody LoginRequest request) {
+        var auth = authService.loginAdmin(request);
+        return ResponseEntity.ok(ApiResponse.success(auth, "Login successful"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    public ResponseEntity<ApiResponse<Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.error(ex.getMessage(), null));
     }
 }

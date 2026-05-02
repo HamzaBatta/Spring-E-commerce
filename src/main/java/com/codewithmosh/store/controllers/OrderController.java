@@ -27,8 +27,11 @@ public class OrderController {
     private final OrderService orderService;
 
     @GetMapping
-    public List<OrderResource> getAllOrders() {
-        return orderService.getAllOrders();
+    public org.springframework.data.domain.Page<OrderResource> getAllOrders(
+            @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+            @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        return orderService.getAllOrders(pageable);
     }
 
     @GetMapping("/{id}")

@@ -12,5 +12,7 @@ public interface StorageItemRepository extends JpaRepository<StorageItem, Long> 
     Optional<StorageItem> findByIdAndStorageId(Long id, Long storageId);
 
     List<StorageItem> findByStorageId(Long storageId);
+
+    org.springframework.data.domain.Page<StorageItem> findByStorageId(Long storageId, org.springframework.data.domain.Pageable pageable);
 }
 

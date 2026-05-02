@@ -15,6 +15,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findAllWithItems();
 
     @EntityGraph(attributePaths = {"items.product", "user", "storage"})
+    @Query("SELECT o FROM Order o")
+    org.springframework.data.domain.Page<Order> findAllWithItems(org.springframework.data.domain.Pageable pageable);
+
+    @EntityGraph(attributePaths = {"items.product", "user", "storage"})
     @Query("SELECT o FROM Order o WHERE o.id = :id")
     Optional<Order> findWithItemsById(@Param("id") Long id);
 }

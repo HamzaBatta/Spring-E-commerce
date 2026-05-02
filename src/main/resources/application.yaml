@@ -18,5 +18,8 @@ jwt:
   expiration: 86400000
 
 stripe:
-  secret-key: 
-  webhook-secret:  
+  secret-key: sk_test_51NjqKaD9B53vbPRuj0GEECHtDEOazZ7CqOuwVDW0tIoWq1yaH9HPnmcXmTCrhsPXovIntOFaA0DAKam8YqVidHqG00XsIeH4HI
+  webhook-secret:  whsec_06ff791cf7016599b02c05308c024cea7f0b19e1857ea30e11495a8ba9b09e67
+
+ninvoices:
+  dir: target/invoices
