@@ -1,5 +1,6 @@
 package com.codewithmosh.store.services;
 
+import com.codewithmosh.store.annotations.StrategyType;
 import com.codewithmosh.store.dtos.requests.CreateOrderRequest;
 import com.codewithmosh.store.dtos.resources.OrderResource;
 
@@ -16,6 +17,7 @@ import com.codewithmosh.store.dtos.resources.OrderResource;
  * Compare results via GET /metrics after a load test:
  *   label "order.create.pessimistic" vs "order.create.naive"
  */
+@StrategyType("order")
 public interface OrderCreationStrategy {
     OrderResource create(CreateOrderRequest request);
 }
