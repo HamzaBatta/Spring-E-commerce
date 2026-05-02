@@ -18,5 +18,5 @@ jwt:
   expiration: 86400000
 
 stripe:
-  secret-key: sk_test
-  webhook-secret: 
+  secret-key: 
+  webhook-secret:  
