@@ -24,12 +24,15 @@ public class ProductController {
     private final CategoryRepository categoryRepository;
 
     @GetMapping
-    public List<ProductResource> getAllProducts(
-            @RequestParam(required = false, defaultValue = "", name = "categoryId") Byte categoryId) {
-        List<Product> products = (categoryId != null)
-                ? productRepository.findByCategoryId(categoryId)
-                : productRepository.findAllWithCategory();
-        return products.stream().map(productMapper::toResource).toList();
+    public org.springframework.data.domain.Page<ProductResource> getAllProducts(
+            @RequestParam(required = false, name = "categoryId") Byte categoryId,
+            @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+            @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<Product> products = (categoryId != null)
+                ? productRepository.findByCategoryId(categoryId, pageable)
+                : productRepository.findAllWithCategory(pageable);
+        return products.map(productMapper::toResource);
     }
 
     @GetMapping("/{id}")

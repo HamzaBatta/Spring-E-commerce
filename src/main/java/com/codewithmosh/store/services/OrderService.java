@@ -36,16 +36,15 @@ public class OrderService {
     private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
     private final OrderCapacityLimiter orderCapacityLimiter;
+    private final com.codewithmosh.store.strategy.StrategySelector strategySelector;
 
     private static final int MAX_LOCK_RETRIES = 3;
     private static final long RETRY_BACKOFF_MS = 60L;
 
     @Transactional(readOnly = true)
-    public List<OrderResource> getAllOrders() {
-        return orderRepository.findAllWithItems()
-                .stream()
-                .map(orderMapper::toResource)
-                .toList();
+    public org.springframework.data.domain.Page<OrderResource> getAllOrders(org.springframework.data.domain.Pageable pageable) {
+        var page = orderRepository.findAllWithItems(pageable);
+        return page.map(orderMapper::toResource);
     }
 
     @Transactional(readOnly = true)
@@ -81,6 +80,15 @@ public class OrderService {
             });
 
             orderRepository.save(order);
+
+            // Trigger invoice generation using the active strategy. Fire-and-forget.
+            try {
+                strategySelector.resolve(com.codewithmosh.store.services.InvoiceProcessingStrategy.class).processInvoice(order.getId());
+            } catch (Exception e) {
+                // intentionally swallow so order creation is unaffected by invoice subsystem
+                System.err.println("Failed to enqueue/generate invoice: " + e.getMessage());
+            }
+
             return orderMapper.toResource(order);
         } finally {
             orderCapacityLimiter.release();

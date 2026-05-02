@@ -17,6 +17,8 @@ public interface StorageItemRepository extends JpaRepository<StorageItem, Long> 
 
     List<StorageItem> findByStorageId(Long storageId);
 
+    org.springframework.data.domain.Page<StorageItem> findByStorageId(Long storageId, org.springframework.data.domain.Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT si FROM StorageItem si WHERE si.storage.id = :storageId AND si.product.id = :productId")
     Optional<StorageItem> findForUpdate(@Param("storageId") Long storageId, @Param("productId") Long productId);

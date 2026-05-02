@@ -19,6 +19,9 @@ stripe:
   secret-key:
   webhook-secret:
 
+ninvoices:
+  dir: target/invoices
+
 app:
   capacity:
     orders:

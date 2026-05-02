@@ -23,13 +23,14 @@ public class UserController {
     private final UserMapper userMapper;
 
     @GetMapping
-    public List<UserResource> getAllUsers(
-            @RequestParam(required = false, defaultValue = "", name = "sort") String sort) {
+    public org.springframework.data.domain.Page<UserResource> getAllUsers(
+            @RequestParam(required = false, defaultValue = "name", name = "sort") String sort,
+            @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+            @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
         if (!Set.of("name", "email").contains(sort)) sort = "name";
-        return userRepository.findAll(Sort.by(sort))
-                .stream()
-                .map(userMapper::toResource)
-                .toList();
+        var pageable = org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort.by(sort));
+        var usersPage = userRepository.findAll(pageable);
+        return usersPage.map(userMapper::toResource);
     }
 
     @GetMapping("/{id}")

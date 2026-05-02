@@ -30,11 +30,11 @@ public class StorageService {
     private StorageItemMapper storageItemMapper;
     private ProductRepository productRepository;
 
-    public List<StorageResource> getAllStorages(Long productId) {
+    public org.springframework.data.domain.Page<StorageResource> getAllStorages(Long productId, org.springframework.data.domain.Pageable pageable) {
         var storages = (productId != null)
-                ? storageRepository.findByProductId(productId)
-                : storageRepository.findAllWithItems();
-        return storages.stream().map(storageMapper::toResource).toList();
+                ? storageRepository.findByProductId(productId, pageable)
+                : storageRepository.findAllWithItems(pageable);
+        return storages.map(storageMapper::toResource);
     }
 
     public StorageResource getStorage(Long id) {
@@ -66,12 +66,10 @@ public class StorageService {
         storageRepository.delete(storage);
     }
 
-    public List<StorageItemResource> getStorageItems(Long storageId) {
+    public org.springframework.data.domain.Page<StorageItemResource> getStorageItems(Long storageId, org.springframework.data.domain.Pageable pageable) {
         ensureStorageExists(storageId);
-        return storageItemRepository.findByStorageId(storageId)
-                .stream()
-                .map(storageItemMapper::toResource)
-                .toList();
+        var page = storageItemRepository.findByStorageId(storageId, pageable);
+        return page.map(storageItemMapper::toResource);
     }
 
     public StorageItemResource addStorageItem(Long storageId, AddStorageItemRequest request) {
