@@ -19,6 +19,8 @@ import com.codewithmosh.store.repositories.StorageItemRepository;
 import com.codewithmosh.store.repositories.StorageRepository;
 import com.codewithmosh.store.repositories.UserRepository;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,9 @@ public class OrderService {
     private final StorageRepository storageRepository;
     private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
+
+    private static final int MAX_LOCK_RETRIES = 3;
+    private static final long RETRY_BACKOFF_MS = 60L;
 
     @Transactional(readOnly = true)
     public List<OrderResource> getAllOrders() {
@@ -103,14 +108,33 @@ public class OrderService {
     }
 
     private void reserveInventory(Long storageId, Long productId, Integer quantity) {
-        var item = storageItemRepository.findByStorageIdAndProductId(storageId, productId).orElse(null);
-        if (item == null) throw new InsufficientInventoryException();
+        for (int attempt = 1; attempt <= MAX_LOCK_RETRIES; attempt++) {
+            try {
+                var item = storageItemRepository.findForUpdate(storageId, productId).orElse(null);
+                if (item == null) {
+                    throw new InsufficientInventoryException();
+                }
 
-        var current = item.getQuantity() == null ? 0 : item.getQuantity();
-        if (current < quantity) throw new InsufficientInventoryException();
+                var current = item.getQuantity() == null ? 0 : item.getQuantity();
+                if (current < quantity) {
+                    throw new InsufficientInventoryException();
+                }
 
-        item.setQuantity(current - quantity);
-        storageItemRepository.save(item);
+                item.setQuantity(current - quantity);
+                storageItemRepository.save(item);
+                return;
+            } catch (PessimisticLockingFailureException ex) {
+                if (attempt == MAX_LOCK_RETRIES) {
+                    throw ex;
+                }
+                try {
+                    Thread.sleep(RETRY_BACKOFF_MS);
+                } catch (InterruptedException interruptedException) {
+                    Thread.currentThread().interrupt();
+                    throw ex;
+                }
+            }
+        }
     }
 
     private void restockInventory(Order order) {
