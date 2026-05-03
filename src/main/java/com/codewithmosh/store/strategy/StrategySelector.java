@@ -44,14 +44,13 @@ public class StrategySelector {
             return beans.get(requestedName);
         }
 
-        if ("default".equals(requestedName) && beans.containsKey(scopedDefault)) {
-            return beans.get(scopedDefault);
+        // Try a type-specific default bean name (e.g. "default-order", "default-invoice", "default-daily-sales")
+        String typeDefault = "default-" + typeKey;
+        if (beans.containsKey(typeDefault)) {
+            return beans.get(typeDefault);
         }
 
-        if (beans.containsKey(scopedDefault)) {
-            return beans.get(scopedDefault);
-        }
-
+        // Legacy fallback: plain "default" if present
         if (beans.containsKey("default")) {
             return beans.get("default");
         }

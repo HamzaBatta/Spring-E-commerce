@@ -6,8 +6,7 @@ import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
 import com.codewithmosh.store.repositories.InvoiceRepository;
 import com.codewithmosh.store.repositories.OrderRepository;
-import lombok.AllArgsConstructor;
-import lombok.RequiredArgsConstructor;
+
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
@@ -27,8 +26,12 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class InvoiceService {
+
+    public InvoiceService(InvoiceRepository invoiceRepository, OrderRepository orderRepository) {
+        this.invoiceRepository = invoiceRepository;
+        this.orderRepository = orderRepository;
+    }
     private static final Logger log = LoggerFactory.getLogger(InvoiceService.class);
 
     private final InvoiceRepository invoiceRepository;
@@ -92,22 +95,19 @@ public class InvoiceService {
                 cs.newLineAtOffset(0, -30);
                 cs.showText("--- Items ---");
 
-                BigDecimal total = BigDecimal.ZERO;
+                java.math.BigDecimal total = java.math.BigDecimal.ZERO;
                 for (var item : order.getItems()) {
                     cs.newLineAtOffset(0, -20);
-                    BigDecimal lineTotal = item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    java.math.BigDecimal lineTotal = item.getUnitPrice().multiply(java.math.BigDecimal.valueOf(item.getQuantity()));
                     String line = String.format("%s x%d  @ %.2f  => %.2f",
-                            item.getProduct().getName(),
-                            item.getQuantity(),
-                            item.getUnitPrice(),
-                            lineTotal);
+                            item.getProduct().getName(), item.getQuantity(), item.getUnitPrice().doubleValue(), lineTotal.doubleValue());
                     cs.showText(line);
                     total = total.add(lineTotal);
                 }
 
                 cs.newLineAtOffset(0, -30);
                 cs.setFont(PDType1Font.HELVETICA_BOLD, 12);
-                cs.showText(String.format("Total: %.2f", total));
+                cs.showText("Total: " + total.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString());
 
                 cs.endText();
             }
