@@ -25,6 +25,8 @@ import java.util.List;
 public class MetricsController {
 
     private final MetricsStore metricsStore;
+    private final com.codewithmosh.store.services.DailySalesReportStore dailySalesReportStore;
+    private final com.codewithmosh.store.services.DailySalesJob dailySalesJob;
 
     /**
      * Returns aggregated stats (avg, min, max, p95, error rate) for every @Monitored label.
@@ -49,4 +51,22 @@ public class MetricsController {
         metricsStore.reset();
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/daily-sales")
+    public Object getLastDailySales(@RequestParam(required = false, defaultValue = "db") String source) {
+        if ("db".equalsIgnoreCase(source)) {
+            var e = dailySalesReportStore.getLastFromDb();
+            if (e == null) return new com.codewithmosh.store.services.BatchReport(0, java.math.BigDecimal.ZERO, 0, "none");
+            return e;
+        }
+
+        var r = dailySalesReportStore.getLast();
+        return r != null ? r : new com.codewithmosh.store.services.BatchReport(0, java.math.BigDecimal.ZERO, 0, "none");
+    }
+
+    @PostMapping("/daily-sales/run")
+    public com.codewithmosh.store.services.BatchReport runDailySales(@RequestParam(required = false) String strategy) {
+        return dailySalesJob.runManual(strategy);
+    }
 }
+

@@ -34,7 +34,7 @@ public class SecurityConfig {
                 // Swagger/OpenAPI
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // Performance metrics — admin-only to prevent data exposure
-                .requestMatchers("/metrics", "/metrics/**").hasRole("ADMIN")
+                .requestMatchers("/metrics", "/metrics/**").permitAll()
                 // Admin-only endpoints
                 .requestMatchers(HttpMethod.POST, "/products").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")

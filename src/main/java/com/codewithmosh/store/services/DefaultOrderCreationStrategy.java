@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Use this as the baseline for your stress test comparison.
  * Send: X-Strategy: default  (or omit the header — "default" is the fallback)
  */
-@Component("default")
+@Component("default-order")
 @AllArgsConstructor
 public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
 

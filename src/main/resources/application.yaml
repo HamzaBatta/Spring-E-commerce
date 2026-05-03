@@ -14,12 +14,13 @@ spring:
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   expiration: 86400000
-
+server:
+  port: 8081
 stripe:
-  secret-key:
+  secret-key: sk_test_51RNZUmQPDJgVN9rq1ubvSJZdxIWbSuwmpMf9Xo975Cqrr1KVSwe5wKTMmNp0Nqfqb7DFx2wwEJs55vPGA19VepHc00yl72wxF0
   webhook-secret:
 
-ninvoices:
+invoices:
   dir: target/invoices
 
 app:
