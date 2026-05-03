@@ -9,7 +9,12 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "storage_items")
+@Table(
+        name = "storage_items",
+        indexes = {
+                @Index(name = "idx_storage_items_storage_product", columnList = "storage_id,product_id")
+        }
+)
 public class StorageItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,4 +32,3 @@ public class StorageItem {
     @Column(name = "quantity")
     private Integer quantity;
 }
-

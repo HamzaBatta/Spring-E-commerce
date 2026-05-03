@@ -6,34 +6,23 @@ import com.codewithmosh.store.dtos.resources.OrderResource;
 import com.codewithmosh.store.entities.Order;
 import com.codewithmosh.store.entities.OrderStatus;
 import com.codewithmosh.store.entities.StorageItem;
-import com.codewithmosh.store.exceptions.InsufficientInventoryException;
 import com.codewithmosh.store.exceptions.InvalidOrderStatusTransitionException;
 import com.codewithmosh.store.exceptions.OrderNotFoundException;
-import com.codewithmosh.store.exceptions.ProductNotFoundException;
-import com.codewithmosh.store.exceptions.StorageNotFoundException;
-import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.mappers.OrderMapper;
 import com.codewithmosh.store.repositories.OrderRepository;
-import com.codewithmosh.store.repositories.ProductRepository;
 import com.codewithmosh.store.repositories.StorageItemRepository;
-import com.codewithmosh.store.repositories.StorageRepository;
-import com.codewithmosh.store.repositories.UserRepository;
+import com.codewithmosh.store.strategy.StrategySelector;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @AllArgsConstructor
 public class OrderService {
     private final OrderRepository orderRepository;
-    private final UserRepository userRepository;
-    private final ProductRepository productRepository;
-    private final StorageRepository storageRepository;
     private final StorageItemRepository storageItemRepository;
     private final OrderMapper orderMapper;
-    private final com.codewithmosh.store.strategy.StrategySelector strategySelector;
+    private final StrategySelector strategySelector;
 
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<OrderResource> getAllOrders(org.springframework.data.domain.Pageable pageable) {
@@ -48,37 +37,8 @@ public class OrderService {
         return orderMapper.toResource(order);
     }
 
-    @Transactional
     public OrderResource createOrder(CreateOrderRequest request) {
-        var user = userRepository.findById(request.getUserId()).orElse(null);
-        if (user == null) throw new UserNotFoundException();
-
-        var storage = storageRepository.findById(request.getStorageId()).orElse(null);
-        if (storage == null) throw new StorageNotFoundException();
-
-        var order = new Order();
-        order.setUser(user);
-        order.setStorage(storage);
-        order.setStatus(OrderStatus.PENDING);
-
-        request.getItems().forEach(itemRequest -> {
-            var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
-            if (product == null) throw new ProductNotFoundException();
-            reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
-            order.addItem(product, itemRequest.getQuantity(), product.getPrice());
-        });
-
-        orderRepository.save(order);
-
-        // Trigger invoice generation using the active strategy. Fire-and-forget.
-        try {
-            strategySelector.resolve(com.codewithmosh.store.services.InvoiceProcessingStrategy.class).processInvoice(order.getId());
-        } catch (Exception e) {
-            // intentionally swallow so order creation is unaffected by invoice subsystem
-            System.err.println("Failed to enqueue/generate invoice: " + e.getMessage());
-        }
-
-        return orderMapper.toResource(order);
+        return strategySelector.resolve(OrderCreationStrategy.class).create(request);
     }
 
     @Transactional
@@ -108,17 +68,6 @@ public class OrderService {
             order.setStatus(OrderStatus.CANCELED);
             orderRepository.save(order);
         }
-    }
-
-    private void reserveInventory(Long storageId, Long productId, Integer quantity) {
-        var item = storageItemRepository.findByStorageIdAndProductId(storageId, productId).orElse(null);
-        if (item == null) throw new InsufficientInventoryException();
-
-        var current = item.getQuantity() == null ? 0 : item.getQuantity();
-        if (current < quantity) throw new InsufficientInventoryException();
-
-        item.setQuantity(current - quantity);
-        storageItemRepository.save(item);
     }
 
     private void restockInventory(Order order) {

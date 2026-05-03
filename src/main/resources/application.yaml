@@ -11,15 +11,20 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-server:
-  port: 8081
 jwt:
   secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   expiration: 86400000
-
+server:
+  port: 8081
 stripe:
-  secret-key: sk_test_51NjqKaD9B53vbPRuj0GEECHtDEOazZ7CqOuwVDW0tIoWq1yaH9HPnmcXmTCrhsPXovIntOFaA0DAKam8YqVidHqG00XsIeH4HI
-  webhook-secret:  whsec_06ff791cf7016599b02c05308c024cea7f0b19e1857ea30e11495a8ba9b09e67
+  secret-key: sk_test_51RNZUmQPDJgVN9rq1ubvSJZdxIWbSuwmpMf9Xo975Cqrr1KVSwe5wKTMmNp0Nqfqb7DFx2wwEJs55vPGA19VepHc00yl72wxF0
+  webhook-secret:
 
-ninvoices:
+invoices:
   dir: target/invoices
+
+app:
+  capacity:
+    orders:
+      maxConcurrent: 4
+      queueSize: 50
