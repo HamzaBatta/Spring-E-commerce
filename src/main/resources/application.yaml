@@ -27,4 +27,4 @@ app:
   capacity:
     orders:
       maxConcurrent: 4
-      timeoutMs: 150
+      queueSize: 50
