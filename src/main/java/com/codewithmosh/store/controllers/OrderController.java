@@ -14,7 +14,10 @@ import com.codewithmosh.store.exceptions.SystemBusyException;
 import com.codewithmosh.store.exceptions.UserNotFoundException;
 import com.codewithmosh.store.services.OrderService;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -29,22 +32,29 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
+    private static final Logger log = LoggerFactory.getLogger(OrderController.class);
+
     private final OrderService orderService;
+
+    @Value("${server.port}")
+    private int serverPort;
 
     @GetMapping
     public org.springframework.data.domain.Page<OrderResource> getAllOrders(
             @RequestParam(required = false, defaultValue = "0", name = "page") int page,
             @RequestParam(required = false, defaultValue = "10", name = "size") int size) {
+        log.info(">>> getAllOrders request handled by instance on port: {}", serverPort);
         var pageable = org.springframework.data.domain.PageRequest.of(page, size);
         return orderService.getAllOrders(pageable);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<OrderResource> getOrder(@PathVariable Long id) {
+        log.info(">>> getOrder request handled by instance on port: {}", serverPort);
         return ResponseEntity.ok(orderService.getOrder(id));
     }
 
@@ -52,6 +62,7 @@ public class OrderController {
     public ResponseEntity<OrderResource> createOrder(
             UriComponentsBuilder uriBuilder,
             @Valid @RequestBody CreateOrderRequest request) {
+        log.info(">>> createOrder request handled by instance on port: {}", serverPort);
         var created = orderService.createOrder(request);
         var uri = uriBuilder.path("/orders/{id}").buildAndExpand(created.getId()).toUri();
         return ResponseEntity.created(uri).body(created);
@@ -61,11 +72,13 @@ public class OrderController {
     public ResponseEntity<OrderResource> updateOrderStatus(
             @PathVariable Long id,
             @Valid @RequestBody UpdateOrderStatusRequest request) {
+        log.info(">>> updateOrderStatus request handled by instance on port: {}", serverPort);
         return ResponseEntity.ok(orderService.updateOrderStatus(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancelOrder(@PathVariable Long id) {
+        log.info(">>> cancelOrder request handled by instance on port: {}", serverPort);
         orderService.cancelOrder(id);
         return ResponseEntity.noContent().build();
     }
@@ -74,6 +87,7 @@ public class OrderController {
     public ResponseEntity<Map<String, Object>> testOrderConcurrency(
             @Valid @RequestBody OrderConcurrencyTestRequest request
     ) {
+        log.info(">>> testOrderConcurrency request handled by instance on port: {}", serverPort);
         var requested = request.getRequests();
         var success = new AtomicInteger();
         var busy = new AtomicInteger();

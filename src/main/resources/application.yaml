@@ -28,3 +28,12 @@ app:
     orders:
       maxConcurrent: 4
       queueSize: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always

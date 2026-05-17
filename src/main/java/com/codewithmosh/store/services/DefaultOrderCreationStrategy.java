@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
  * Send: X-Strategy: default  (or omit the header — "default" is the fallback)
  */
 @Component("default-order")
-@AllArgsConstructor
 public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
 
     private final UserRepository userRepository;
@@ -132,7 +131,7 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
         order.setStatus(OrderStatus.PENDING);
 
         request.getItems().forEach(itemRequest -> {
-            var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
+            var product = productRepository.findByIdWithLock(itemRequest.getProductId()).orElse(null);
             if (product == null) throw new ProductNotFoundException();
             reserveInventory(storage.getId(), product.getId(), itemRequest.getQuantity());
             order.addItem(product, itemRequest.getQuantity(), product.getPrice());
