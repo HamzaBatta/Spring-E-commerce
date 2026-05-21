@@ -7,6 +7,8 @@ import com.codewithmosh.store.entities.Product;
 import com.codewithmosh.store.mappers.ProductMapper;
 import com.codewithmosh.store.repositories.CategoryRepository;
 import com.codewithmosh.store.repositories.ProductRepository;
+import com.codewithmosh.store.services.ProductService;
+import com.codewithmosh.store.services.ProductViewTracker;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,8 @@ public class ProductController {
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
     private final CategoryRepository categoryRepository;
+    private final ProductService productService;
+    private final ProductViewTracker productViewTracker;
 
     @GetMapping
     public org.springframework.data.domain.Page<ProductResource> getAllProducts(
@@ -37,9 +41,10 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProductResource> getProduct(@PathVariable Long id) {
-        var product = productRepository.findById(id).orElse(null);
+        productViewTracker.trackView(id);
+        var product = productService.getProductById(id);
         if (product == null) return ResponseEntity.notFound().build();
-        return ResponseEntity.ok(productMapper.toResource(product));
+        return ResponseEntity.ok(product);
     }
 
     @PostMapping
