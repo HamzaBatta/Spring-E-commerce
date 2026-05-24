@@ -34,4 +34,3 @@ Process large sets of orders in one run and produce a sales summary.
 - Fetch last report:
   - `GET /metrics/daily-sales`
 
-

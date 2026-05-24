@@ -33,4 +33,3 @@ Move slow work (invoice generation) off the request thread so orders stay fast.
 - Create an order.
 - Check logs for invoice processing and generated PDF output.
 
-

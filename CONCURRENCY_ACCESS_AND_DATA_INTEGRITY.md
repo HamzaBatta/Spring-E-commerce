@@ -33,4 +33,3 @@ Prevent race conditions when multiple users order the same inventory at the same
 - Optimistic locking: better throughput but requires retry on version conflicts.
 - Distributed locks (Redis): adds infrastructure and operational overhead.
 
-
