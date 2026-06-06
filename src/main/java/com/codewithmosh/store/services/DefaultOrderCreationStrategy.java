@@ -18,6 +18,7 @@ import com.codewithmosh.store.repositories.StorageRepository;
 import com.codewithmosh.store.repositories.UserRepository;
 import com.codewithmosh.store.strategy.StrategySelector;
 import org.springframework.beans.factory.annotation.Value;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -52,6 +53,7 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
     private final StrategySelector strategySelector;
     private final TransactionTemplate transactionTemplate;
     private final ThreadPoolExecutor orderExecutor;
+    private final MeterRegistry meterRegistry;
 
     private static final int MAX_LOCK_RETRIES = 3;
     private static final long RETRY_BACKOFF_MS = 60L;
@@ -65,6 +67,7 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
             OrderMapper orderMapper,
             StrategySelector strategySelector,
             TransactionTemplate transactionTemplate,
+            MeterRegistry meterRegistry,
             @Value("${app.capacity.orders.maxConcurrent:4}") int maxConcurrent,
             @Value("${app.capacity.orders.queueSize:50}") int queueSize
     ) {
@@ -76,6 +79,7 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
         this.orderMapper = orderMapper;
         this.strategySelector = strategySelector;
         this.transactionTemplate = transactionTemplate;
+        this.meterRegistry = meterRegistry;
 
         int threads = Math.max(1, maxConcurrent);
         int capacity = Math.max(1, queueSize);
@@ -97,13 +101,15 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
     @Monitored("order.create.pessimistic")
     public OrderResource create(CreateOrderRequest request) {
         try {
-            var future = orderExecutor.submit(() ->
-                    transactionTemplate.execute(status -> doCreate(request)));
-            var result = future.get();
-            if (result == null) {
-                throw new IllegalStateException("Order creation returned null");
-            }
-            return result;
+            return meterRegistry.timer("order.optimized").recordCallable(() -> {
+                var future = orderExecutor.submit(() ->
+                        transactionTemplate.execute(status -> doCreate(request)));
+                var result = future.get();
+                if (result == null) {
+                    throw new IllegalStateException("Order creation returned null");
+                }
+                return result;
+            });
         } catch (RejectedExecutionException ex) {
             throw new SystemBusyException();
         } catch (InterruptedException ex) {
@@ -115,6 +121,9 @@ public class DefaultOrderCreationStrategy implements OrderCreationStrategy {
                 throw runtimeException;
             }
             throw new RuntimeException(cause);
+        } catch (Exception ex) {
+            if (ex instanceof RuntimeException) throw (RuntimeException) ex;
+            throw new RuntimeException(ex);
         }
     }
 

@@ -17,6 +17,7 @@ import com.codewithmosh.store.repositories.StorageRepository;
 import com.codewithmosh.store.repositories.UserRepository;
 import com.codewithmosh.store.strategy.StrategySelector;
 import lombok.AllArgsConstructor;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,48 +48,56 @@ public class NaiveOrderCreationStrategy implements OrderCreationStrategy {
     private final OrderRepository orderRepository;
     private final OrderMapper orderMapper;
     private final StrategySelector strategySelector;
+    private final MeterRegistry meterRegistry;
 
     @Monitored("order.create.naive")
     @Transactional
     public OrderResource create(CreateOrderRequest request) {
-        var user = userRepository.findById(request.getUserId()).orElse(null);
-        if (user == null) throw new UserNotFoundException();
-
-        var storage = storageRepository.findById(request.getStorageId()).orElse(null);
-        if (storage == null) throw new StorageNotFoundException();
-
-        var order = new Order();
-        order.setUser(user);
-        order.setStorage(storage);
-        order.setStatus(OrderStatus.PENDING);
-
-        request.getItems().forEach(itemRequest -> {
-            var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
-            if (product == null) throw new ProductNotFoundException();
-
-            // No lock — plain read → check → write. Race condition is possible here.
-            var item = storageItemRepository
-                    .findByStorageIdAndProductId(storage.getId(), product.getId())
-                    .orElseThrow(InsufficientInventoryException::new);
-
-            var current = item.getQuantity() == null ? 0 : item.getQuantity();
-            if (current < itemRequest.getQuantity()) throw new InsufficientInventoryException();
-
-            item.setQuantity(current - itemRequest.getQuantity());
-            storageItemRepository.save(item);
-
-            order.addItem(product, itemRequest.getQuantity(), product.getPrice());
-        });
-
-        orderRepository.save(order);
-
-        // Trigger invoice generation using the active strategy. Fire-and-forget.
         try {
-            strategySelector.resolve(InvoiceProcessingStrategy.class).processInvoice(order.getId());
-        } catch (Exception e) {
-            System.err.println("Failed to enqueue/generate invoice: " + e.getMessage());
-        }
+            return meterRegistry.timer("order.simple").recordCallable(() -> {
+                var user = userRepository.findById(request.getUserId()).orElse(null);
+                if (user == null) throw new UserNotFoundException();
 
-        return orderMapper.toResource(order);
+                var storage = storageRepository.findById(request.getStorageId()).orElse(null);
+                if (storage == null) throw new StorageNotFoundException();
+
+                var order = new Order();
+                order.setUser(user);
+                order.setStorage(storage);
+                order.setStatus(OrderStatus.PENDING);
+
+                request.getItems().forEach(itemRequest -> {
+                    var product = productRepository.findById(itemRequest.getProductId()).orElse(null);
+                    if (product == null) throw new ProductNotFoundException();
+
+                    // No lock — plain read → check → write. Race condition is possible here.
+                    var item = storageItemRepository
+                            .findByStorageIdAndProductId(storage.getId(), product.getId())
+                            .orElseThrow(InsufficientInventoryException::new);
+
+                    var current = item.getQuantity() == null ? 0 : item.getQuantity();
+                    if (current < itemRequest.getQuantity()) throw new InsufficientInventoryException();
+
+                    item.setQuantity(current - itemRequest.getQuantity());
+                    storageItemRepository.save(item);
+
+                    order.addItem(product, itemRequest.getQuantity(), product.getPrice());
+                });
+
+                orderRepository.save(order);
+
+                // Trigger invoice generation using the active strategy. Fire-and-forget.
+                try {
+                    strategySelector.resolve(InvoiceProcessingStrategy.class).processInvoice(order.getId());
+                } catch (Exception e) {
+                    System.err.println("Failed to enqueue/generate invoice: " + e.getMessage());
+                }
+
+                return orderMapper.toResource(order);
+            });
+        } catch (Exception e) {
+            if (e instanceof RuntimeException) throw (RuntimeException) e;
+            throw new RuntimeException(e);
+        }
     }
 }
